@@ -20,9 +20,12 @@ from .engine.rules import validate_squad, RuleError
 from django.shortcuts import render, redirect
 from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib.auth.models import User
+from django.contrib import messages
 from django.http import HttpResponseBadRequest, JsonResponse
 
+from django.contrib.auth.decorators import login_required
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
@@ -295,23 +298,28 @@ def library_view(request):
 
 
 
-@require_POST
-def summon_one_view(request):
-    profile = get_current_profile(request)
-    if not profile:
-        return redirect("summon")
+@login_required
+def summon_one(request):
+    profile, _ = PlayerProfile.objects.get_or_create(user=request.user)
 
-    summoned = summon_random_hero(profile, cost=5000)
-    if summoned is None:
+    hero = summon_random_hero(profile, cost=5000)
+    if hero is None:
         request.session["last_summon_msg"] = "Not enough coins to summon."
     else:
-        request.session["last_summon_msg"] = f"Summoned: {summoned.hero_base.name}"
+        name = hero.hero_base.name
+        rarity = hero.hero_base.rarity
+        request.session["last_summon_msg"] = f"You summoned: {name} ({rarity})!"
 
     return redirect("summon")
 
 
+
 def summon_view(request):
     profile = get_current_profile(request)
+
+    print("SUMMON USER:", request.user)
+    print("SUMMON COINS:", profile.coins)
+
     msg = request.session.pop("last_summon_msg", None)
     return render(request, "FO_game/summon.html", {
         "active_tab": "summon",

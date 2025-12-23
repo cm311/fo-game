@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import User
 
 import random
@@ -62,32 +62,45 @@ class PlayerProfile(models.Model):
 
 def summon_random_hero(profile: PlayerProfile, cost: int = 5000) -> HeroInstance | None:
     """
-    Very simple summon:
-    - costs `cost` coins
-    - picks a random HeroBase (no rarity weighting yet)
-    - creates a HeroInstance for the profile's user
-    Returns the new HeroInstance or None if not enough coins.
+    Simple rarity-weighted summon.
+    Pull rates (design doc):
+      Common 50%, Uncommon 30%, Rare 15%, Epic 4%, Legendary 1%
     """
     if profile.coins < cost:
         return None
 
-    all_bases = list(HeroBase.objects.all())
-    if not all_bases:
-        return None
+    rarities = ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
+    weights  = [50,        30,         15,     4,      1]
 
-    base = random.choice(all_bases)
+    chosen_rarity = random.choices(rarities, weights=weights, k=1)[0]
 
-    # spend coins
-    profile.coins -= cost
-    profile.save()
+    pool = list(HeroBase.objects.filter(rarity=chosen_rarity))
+    if not pool:
+        # fallback if you have no heroes of that rarity yet
+        pool = list(HeroBase.objects.all())
+        if not pool:
+            return None
 
-    instance = HeroInstance.objects.create(
-        owner=profile.user,
-        hero_base=base,
-        level=1,
-        xp=0,
-    )
+    base = random.choice(pool)
+
+    with transaction.atomic():
+        # re-check inside transaction (prevents weird double-spend on spam clicks)
+        profile.refresh_from_db()
+        if profile.coins < cost:
+            return None
+
+        profile.coins -= cost
+        profile.save(update_fields=["coins"])
+
+        instance = HeroInstance.objects.create(
+            owner=profile.user,
+            hero_base=base,
+            level=1,
+            xp=0,
+        )
+
     return instance
+
 
 
 def xp_to_level_up(level: int) -> int:

@@ -5,7 +5,7 @@ urlpatterns = [
     path("", views.home_view, name="home"),
     path("campaign/", views.campaign_view, name="campaign"),
     path("summon/", views.summon_view, name="summon"),
-    path("summon/one/", views.summon_one_view, name="summon-one"),
+    path("summon/one/", views.summon_one, name="summon-one"),
     path("heroes/", views.heroes_view, name="heroes"),
     path("library/", views.library_view, name="library"),
 
