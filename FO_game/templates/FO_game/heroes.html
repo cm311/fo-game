@@ -1,0 +1,362 @@
+{% extends "FO_game/base.html" %}
+{% block content %}
+<h1 class="mb-3">Heroes</h1>
+
+{% if error %}
+  <div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+{% if saved %}
+  <div class="alert alert-success">Squad saved.</div>
+{% endif %}
+
+<div class="row g-4">
+  <!-- Squad Builder -->
+  <div class="col-12 col-lg-5">
+    <div class="card bg-dark border-secondary mb-3">
+      <div class="card-header">
+        <strong>Squad Builder</strong>
+        <span class="text-muted ms-2">(Click a slot, then click a hero)</span>
+      </div>
+
+      <div class="card-body">
+        <div class="small text-muted mb-3">
+          Prototype rules: pick up to <strong>5</strong> total units for now.
+          Must have <strong>at least 1</strong> in <strong>Front</strong> and <strong>at least 1</strong> in <strong>Back</strong>.
+        </div>
+
+        <form method="post" id="squadForm">
+          {% csrf_token %}
+          <input type="hidden" name="squad_json" id="squad_json" value="" />
+
+          <div class="d-flex gap-2 mb-3">
+            <button type="button" class="btn btn-sm btn-outline-light" id="clearActiveBtn" disabled>
+              Clear selected
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-warning" id="clearAllBtn">
+              Clear all
+            </button>
+            <button type="submit" class="btn btn-sm btn-primary ms-auto">
+              Save Squad
+            </button>
+          </div>
+
+          <div class="small text-muted mb-2" id="hint">Select a slot.</div>
+
+          <!-- Front -->
+          <h6 class="text-info mb-2">Front (6 slots)</h6>
+          <div class="row g-2 mb-3">
+            {% for i in "012345" %}
+              <div class="col-4">
+                <div class="slot border border-secondary rounded p-2 text-center"
+                     data-row="front"
+                     data-idx="{{ forloop.counter0 }}">
+                  <div class="text-muted small">Front {{ forloop.counter }}</div>
+                  <div class="slot-name fw-bold">Empty</div>
+                  <div class="slot-sub small text-muted">&nbsp;</div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+
+          <!-- Back -->
+          <h6 class="text-warning mb-2">Back (6 slots)</h6>
+          <div class="row g-2">
+            {% for i in "012345" %}
+              <div class="col-4">
+                <div class="slot border border-secondary rounded p-2 text-center"
+                     data-row="back"
+                     data-idx="{{ forloop.counter0 }}">
+                  <div class="text-muted small">Back {{ forloop.counter }}</div>
+                  <div class="slot-name fw-bold">Empty</div>
+                  <div class="slot-sub small text-muted">&nbsp;</div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </form>
+      </div>
+    </div>
+
+    {% if current_units %}
+      <div class="card bg-dark border-secondary">
+        <div class="card-header"><strong>Currently Saved Squad</strong></div>
+        <div class="card-body small">
+          <div class="mb-2">
+            <div class="text-info fw-bold">Front</div>
+            <div>
+              {% for h in current_units.front %}
+                {% if h %}{{ h.hero_base.name }} (Lv {{ h.level }}){% else %}<span class="text-muted">Empty</span>{% endif %}
+                {% if not forloop.last %}, {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+          <div>
+            <div class="text-warning fw-bold">Back</div>
+            <div>
+              {% for h in current_units.back %}
+                {% if h %}{{ h.hero_base.name }} (Lv {{ h.level }}){% else %}<span class="text-muted">Empty</span>{% endif %}
+                {% if not forloop.last %}, {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Barracks -->
+  <div class="col-12 col-lg-7">
+    <div class="card bg-dark border-secondary">
+      <div class="card-header d-flex justify-content-between align-items-center gap-2">
+        <div>
+          <strong>Barracks</strong>
+          <span class="text-muted ms-2">({{ roster|length }} owned)</span>
+        </div>
+
+        <input id="heroSearch"
+               class="form-control form-control-sm bg-dark text-light border-secondary"
+               style="max-width: 260px;"
+               placeholder="Search name/faction/rarity/role..." />
+      </div>
+
+      <div class="card-body">
+        {% if roster %}
+          <div class="row g-3" id="barracksGrid">
+            {% for inst in roster %}
+              <div class="col-12 col-sm-6 hero-col">
+                <div class="hero-card card bg-secondary border-0 h-100"
+                     role="button"
+                     tabindex="0"
+                     data-hero-id="{{ inst.id }}"
+                     data-hero-name="{{ inst.hero_base.name|escape }}"
+                     data-hero-level="{{ inst.level }}"
+                     data-hero-faction="{{ inst.hero_base.faction|escape }}"
+                     data-hero-rarity="{{ inst.hero_base.rarity|escape }}"
+                     data-hero-role="{{ inst.hero_base.role|escape }}">
+                  <div class="card-body p-2 d-flex flex-column">
+                    <div class="fw-bold small d-flex justify-content-between align-items-center">
+                      <span>
+                        {{ inst.hero_base.name }}
+                        <span class="text-warning">Lv. {{ inst.level }}</span>
+                      </span>
+                      <span class="badge bg-dark slot-badge">#{{ inst.id }}</span>
+                    </div>
+
+                    <div class="small text-muted">
+                      {{ inst.hero_base.faction }} · {{ inst.hero_base.rarity }} · {{ inst.hero_base.role }}
+                    </div>
+
+                    <div class="mt-2 small">
+                      <div>HP: {{ inst.hero_base.base_hp }}</div>
+                      <div>ATK: {{ inst.hero_base.base_atk }} · DEF: {{ inst.hero_base.base_def }}</div>
+                      <div>M.ATK: {{ inst.hero_base.base_matk }} · M.DEF: {{ inst.hero_base.base_mdef }}</div>
+                      <div>SPD: {{ inst.hero_base.base_speed }}</div>
+                    </div>
+
+                    <div class="mt-auto pt-2 small text-dark" style="opacity:.7;">
+                      Click to assign to selected slot
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-muted mb-0">
+            You do not own any heroes yet. Go to <a href="{% url 'summon' %}">Summon</a>.
+          </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ SAFE JSON for JS (no `None` crash) -->
+{{ current|default:None|json_script:"currentSquadData" }}
+
+<style>
+  .slot { cursor: pointer; user-select: none; min-height: 74px; }
+  .slot:hover { background: rgba(255,255,255,.05); }
+  .slot.active { outline: 2px solid rgba(255,255,255,.55); box-shadow: 0 0 0 3px rgba(255,255,255,.10); }
+  .slot.filled { background: rgba(255,255,255,.06); }
+  .hero-card { cursor: pointer; user-select: none; transition: transform .06s ease, box-shadow .06s ease; }
+  .hero-card:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0,0,0,.25); }
+  .hero-card.assigned { opacity: .55; }
+</style>
+
+<script>
+(() => {
+  const slots = Array.from(document.querySelectorAll(".slot"));
+  const heroCards = Array.from(document.querySelectorAll(".hero-card"));
+  const heroCols = Array.from(document.querySelectorAll(".hero-col"));
+  const hint = document.getElementById("hint");
+  const squadJsonEl = document.getElementById("squad_json");
+  const clearActiveBtn = document.getElementById("clearActiveBtn");
+  const clearAllBtn = document.getElementById("clearAllBtn");
+  const form = document.getElementById("squadForm");
+  const heroSearch = document.getElementById("heroSearch");
+
+  // Load current squad safely
+  let initial = null;
+  try {
+    const el = document.getElementById("currentSquadData");
+    initial = el ? JSON.parse(el.textContent) : null;
+  } catch (e) {
+    initial = null;
+  }
+
+  const squad = {
+    front: Array(6).fill(null),
+    back:  Array(6).fill(null),
+  };
+
+  if (initial && initial.front && initial.back) {
+    (initial.front || []).forEach((id, i) => { if (i < 6 && id) squad.front[i] = Number(id); });
+    (initial.back  || []).forEach((id, i) => { if (i < 6 && id) squad.back[i]  = Number(id); });
+  }
+
+  let active = { row: "front", idx: 0 };
+
+  function setActive(row, idx) {
+    active = { row, idx };
+    slots.forEach(s => s.classList.remove("active"));
+    const el = slots.find(s => s.dataset.row === row && Number(s.dataset.idx) === idx);
+    if (el) el.classList.add("active");
+    clearActiveBtn.disabled = false;
+    hint.textContent = `Selected: ${row.toUpperCase()} ${idx+1}. Click a hero to assign.`;
+  }
+
+  function findHeroLocation(heroId) {
+    heroId = Number(heroId);
+    for (let i = 0; i < 6; i++) {
+      if (squad.front[i] === heroId) return { row: "front", idx: i };
+      if (squad.back[i]  === heroId) return { row: "back",  idx: i };
+    }
+    return null;
+  }
+
+  function clearSlot(row, idx) {
+    squad[row][idx] = null;
+    render();
+  }
+
+  function clearActive() {
+    if (!active) return;
+    clearSlot(active.row, active.idx);
+  }
+
+  function clearAll() {
+    squad.front = Array(6).fill(null);
+    squad.back  = Array(6).fill(null);
+    render();
+  }
+
+  function assign(heroId) {
+    if (!active) return;
+    heroId = Number(heroId);
+
+    // toggle-off if same hero already in the selected slot
+    const existing = squad[active.row][active.idx];
+    if (existing === heroId) {
+      squad[active.row][active.idx] = null;
+      render();
+      return;
+    }
+
+    // move behavior: if already assigned elsewhere, remove first
+    const prev = findHeroLocation(heroId);
+    if (prev) squad[prev.row][prev.idx] = null;
+
+    // assign
+    squad[active.row][active.idx] = heroId;
+    render();
+  }
+
+  function refreshAssignedStyling() {
+    const loc = new Map();
+    squad.front.forEach((id, i) => { if (id) loc.set(Number(id), `F${i+1}`); });
+    squad.back.forEach((id, i)  => { if (id) loc.set(Number(id), `B${i+1}`); });
+
+    heroCards.forEach(card => {
+      const id = Number(card.dataset.heroId);
+      const where = loc.get(id);
+      card.classList.toggle("assigned", !!where);
+      const badge = card.querySelector(".slot-badge");
+      if (badge) badge.textContent = where ? where : `#${id}`;
+    });
+  }
+
+  function render() {
+    // update slots
+    slots.forEach(slot => {
+      const row = slot.dataset.row;
+      const idx = Number(slot.dataset.idx);
+      const id = squad[row][idx];
+
+      const nameEl = slot.querySelector(".slot-name");
+      const subEl = slot.querySelector(".slot-sub");
+
+      if (!id) {
+        slot.classList.remove("filled");
+        nameEl.textContent = "Empty";
+        subEl.innerHTML = "&nbsp;";
+      } else {
+        slot.classList.add("filled");
+        const card = heroCards.find(c => Number(c.dataset.heroId) === id);
+        if (card) {
+          nameEl.textContent = `${card.dataset.heroName} (Lv ${card.dataset.heroLevel})`;
+          subEl.textContent = `${card.dataset.heroFaction} · ${card.dataset.heroRarity}`;
+        } else {
+          nameEl.textContent = `#${id}`;
+          subEl.textContent = "";
+        }
+      }
+    });
+
+    squadJsonEl.value = JSON.stringify(squad);
+    refreshAssignedStyling();
+  }
+
+  // Slot click => select
+  slots.forEach(slot => {
+    slot.addEventListener("click", () => {
+      setActive(slot.dataset.row, Number(slot.dataset.idx));
+    });
+  });
+
+  // Hero click => assign
+  heroCards.forEach(card => {
+    card.addEventListener("click", () => assign(card.dataset.heroId));
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); card.click(); }
+    });
+  });
+
+  clearActiveBtn.addEventListener("click", clearActive);
+  clearAllBtn.addEventListener("click", clearAll);
+
+  // search filter
+  if (heroSearch) {
+    heroSearch.addEventListener("input", () => {
+      const q = heroSearch.value.trim().toLowerCase();
+      heroCols.forEach(col => {
+        const card = col.querySelector(".hero-card");
+        const hay = (
+          (card.dataset.heroName || "") + " " +
+          (card.dataset.heroFaction || "") + " " +
+          (card.dataset.heroRarity || "") + " " +
+          (card.dataset.heroRole || "")
+        ).toLowerCase();
+        col.style.display = hay.includes(q) ? "" : "none";
+      });
+    });
+  }
+
+
+
+  // init
+  render();
+  setActive("front", 0);
+})();
+</script>
+{% endblock %}

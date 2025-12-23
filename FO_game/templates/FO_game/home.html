@@ -1,0 +1,53 @@
+{% extends "FO_game/base.html" %}
+{% block content %}
+<div class="text-center mb-4">
+  <h1 class="display-4 fw-bold">Fractured Order</h1>
+  <p class="text-secondary">Choose where to begin.</p>
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-md-6 col-lg-3">
+    <a href="{% url 'campaign' %}" class="text-decoration-none">
+      <div class="card bg-dark border-primary h-100">
+        <div class="card-body text-center">
+          <h2 class="h4 text-primary mb-2">Campaign</h2>
+          <p class="text-light-50 mb-0">Fight battles and progress the story.</p>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <div class="col-12 col-md-6 col-lg-3">
+    <a href="{% url 'summon' %}" class="text-decoration-none">
+      <div class="card bg-dark border-purple h-100">
+        <div class="card-body text-center">
+          <h2 class="h4 text-warning mb-2">Summon</h2>
+          <p class="text-light-50 mb-0">Call new heroes from the altar.</p>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <div class="col-12 col-md-6 col-lg-3">
+    <a href="{% url 'heroes' %}" class="text-decoration-none">
+      <div class="card bg-dark border-info h-100">
+        <div class="card-body text-center">
+          <h2 class="h4 text-info mb-2">Heroes</h2>
+          <p class="text-light-50 mb-0">View and arrange your squads.</p>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <div class="col-12 col-md-6 col-lg-3">
+    <a href="{% url 'library' %}" class="text-decoration-none">
+      <div class="card bg-dark border-warning h-100">
+        <div class="card-body text-center">
+          <h2 class="h4 text-warning mb-2">Library</h2>
+          <p class="text-light-50 mb-0">Browse all factions and heroes.</p>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+{% endblock %}

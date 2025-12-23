@@ -1,0 +1,168 @@
+{
+  "faction": "GOBLIN",
+  "rarity": "COMMON",
+  "heroes": [
+    {
+      "id": "GOBLIN_CUTTHROAT",
+      "name": "Goblin Cutthroat",
+      "role": "FRONTLINE",
+      "baseStats": { "hp": 950, "atk": 115, "def": 35, "mAtk": 20, "mDef": 30, "speed": 120 },
+      "growth": { "hp": 70, "atk": 9, "def": 2, "mAtk": 1, "mDef": 2, "speed": 5 },
+      "abilities": [
+        {
+          "id": "CUTTHROAT_STAB",
+          "name": "Stab",
+          "kind": "ACTIVE",
+          "cooldownTicks": 0,
+          "target": { "scope": "ENEMY", "shape": "SINGLE", "preference": "FRONT_ROW" },
+          "scaling": { "stat": "atk", "mult": 1.0 },
+          "effects": [
+            { "type": "DAMAGE", "damageType": "PHYSICAL", "amount": { "mode": "SCALED" } }
+          ]
+        },
+        {
+          "id": "CUTTHROAT_RECKLESS_RUSH",
+          "name": "Reckless Rush",
+          "kind": "ACTIVE",
+          "cooldownTicks": 35,
+          "target": { "scope": "SELF", "shape": "SINGLE" },
+          "scaling": { "stat": null, "mult": 0 },
+          "effects": [
+            { "type": "BUFF", "stat": "speed", "amount": 15, "duration": { "mode": "TICKS", "ticks": 30 } },
+            { "type": "BUFF", "stat": "atk", "amount": 10, "duration": { "mode": "TICKS", "ticks": 30 } },
+            { "type": "DEBUFF", "stat": "def", "amount": -10, "duration": { "mode": "TICKS", "ticks": 30 } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "GOBLIN_SPEAR_SNEAK",
+      "name": "Goblin Spear Sneak",
+      "role": "FRONTLINE",
+      "baseStats": { "hp": 1050, "atk": 105, "def": 45, "mAtk": 20, "mDef": 35, "speed": 115 },
+      "growth": { "hp": 85, "atk": 8, "def": 3, "mAtk": 1, "mDef": 2, "speed": 4 },
+      "abilities": [
+        {
+          "id": "SPEAR_SNEAK_POKING_THRUST",
+          "name": "Poking Thrust",
+          "kind": "ACTIVE",
+          "cooldownTicks": 0,
+          "target": { "scope": "ENEMY", "shape": "SINGLE", "preference": "FRONT_ROW" },
+          "scaling": { "stat": "atk", "mult": 0.95 },
+          "effects": [
+            { "type": "DAMAGE", "damageType": "PHYSICAL", "amount": { "mode": "SCALED" } }
+          ]
+        },
+        {
+          "id": "SPEAR_SNEAK_COWER",
+          "name": "Cower Behind Allies",
+          "kind": "PASSIVE",
+          "trigger": "ON_BATTLE_START",
+          "target": { "scope": "SELF", "shape": "SINGLE" },
+          "effects": [
+            { "type": "PASSIVE_RULE", "rule": "TARGET_WEIGHT_MULTIPLIER", "value": 0.85 }
+          ],
+          "notes": "While at least one allied frontline unit is alive, this unit is 15% less likely to be targeted."
+        }
+      ]
+    },
+    {
+      "id": "GOBLIN_SLING_BOMBER",
+      "name": "Goblin Sling Bomber",
+      "role": "BACKLINE",
+      "baseStats": { "hp": 850, "atk": 125, "def": 30, "mAtk": 25, "mDef": 35, "speed": 110 },
+      "growth": { "hp": 65, "atk": 10, "def": 2, "mAtk": 1, "mDef": 2, "speed": 4 },
+      "abilities": [
+        {
+          "id": "SLING_BOMBER_SCRAP_SHOT",
+          "name": "Scrap Shot",
+          "kind": "ACTIVE",
+          "cooldownTicks": 0,
+          "target": { "scope": "ENEMY", "shape": "SINGLE", "preference": "RANDOM" },
+          "scaling": { "stat": "atk", "mult": 1.05 },
+          "effects": [
+            { "type": "DAMAGE", "damageType": "PHYSICAL", "amount": { "mode": "SCALED" } }
+          ]
+        },
+        {
+          "id": "SLING_BOMBER_VOLATILE_PAYLOAD",
+          "name": "Volatile Payload",
+          "kind": "PASSIVE",
+          "trigger": "ON_SELF_ACTION",
+          "target": { "scope": "SELF", "shape": "SINGLE" },
+          "effects": [
+            { "type": "PROC", "chance": 0.25, "onProc": [
+              { "type": "DAMAGE_BONUS", "damageType": "PHYSICAL", "mult": 0.25, "appliesTo": "THIS_ACTION" }
+            ]}
+          ],
+          "notes": "25% chance for this unit's basic attack to deal +25% damage."
+        }
+      ]
+    },
+    {
+      "id": "GOBLIN_HEX_SQUEAKER",
+      "name": "Goblin Hex-Squeaker",
+      "role": "BACKLINE",
+      "baseStats": { "hp": 800, "atk": 25, "def": 25, "mAtk": 105, "mDef": 55, "speed": 120 },
+      "growth": { "hp": 60, "atk": 1, "def": 1, "mAtk": 8, "mDef": 4, "speed": 5 },
+      "abilities": [
+        {
+          "id": "HEX_SQUEAKER_HEX_BOLT",
+          "name": "Hex Bolt",
+          "kind": "ACTIVE",
+          "cooldownTicks": 0,
+          "target": { "scope": "ENEMY", "shape": "SINGLE", "preference": "LOWEST_HP_PERCENT" },
+          "scaling": { "stat": "mAtk", "mult": 1.0 },
+          "effects": [
+            { "type": "DAMAGE", "damageType": "MAGIC", "amount": { "mode": "SCALED" } }
+          ]
+        },
+        {
+          "id": "HEX_SQUEAKER_ANNOYING_CHANT",
+          "name": "Annoying Chant",
+          "kind": "ACTIVE",
+          "cooldownTicks": 45,
+          "target": { "scope": "ENEMY", "shape": "SINGLE", "preference": "HIGHEST_ATK" },
+          "scaling": { "stat": "mAtk", "mult": 0.6 },
+          "effects": [
+            { "type": "DAMAGE", "damageType": "MAGIC", "amount": { "mode": "SCALED" } },
+            { "type": "DEBUFF", "stat": "atk", "amount": -15, "duration": { "mode": "TICKS", "ticks": 40 } }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "GOBLIN_TINKER",
+      "name": "Goblin Tinker",
+      "role": "BACKLINE",
+      "baseStats": { "hp": 900, "atk": 35, "def": 35, "mAtk": 75, "mDef": 65, "speed": 105 },
+      "growth": { "hp": 70, "atk": 2, "def": 2, "mAtk": 6, "mDef": 4, "speed": 3 },
+      "abilities": [
+        {
+          "id": "TINKER_JURY_RIGGED_BLAST",
+          "name": "Jury-Rigged Blast",
+          "kind": "ACTIVE",
+          "cooldownTicks": 0,
+          "target": { "scope": "ENEMY", "shape": "SINGLE", "preference": "RANDOM" },
+          "scaling": { "stat": "mAtk", "mult": 0.9 },
+          "effects": [
+            { "type": "DAMAGE", "damageType": "MAGIC", "amount": { "mode": "SCALED" } }
+          ]
+        },
+        {
+          "id": "TINKER_FIELD_FIX",
+          "name": "Field Fix",
+          "kind": "ACTIVE",
+          "cooldownTicks": 50,
+          "target": { "scope": "ALLY", "shape": "SINGLE", "preference": "LOWEST_HP_PERCENT" },
+          "scaling": { "stat": "mAtk", "mult": 0.0 },
+          "effects": [
+            { "type": "HEAL", "amount": { "mode": "PERCENT_MAX_HP", "percent": 10 } },
+            { "type": "BUFF", "stat": "def", "amount": 10, "duration": { "mode": "TICKS", "ticks": 40 } }
+          ],
+          "notes": "A crude patch job that keeps goblins alive just long enough."
+        }
+      ]
+    }
+  ]
+}

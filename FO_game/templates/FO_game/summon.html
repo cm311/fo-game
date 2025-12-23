@@ -1,0 +1,35 @@
+{% extends "FO_game/base.html" %}
+{% block content %}
+<h1 class="mb-3">Summon</h1>
+
+{% if message %}
+  <div class="alert alert-info">{{ message }}</div>
+{% endif %}
+
+<p class="text-secondary">
+  Spend <strong>5,000</strong> coins to summon a random hero from the entire hero pool.
+</p>
+
+<div class="card bg-dark border-secondary">
+  <div class="card-body">
+    <h5 class="card-title">Void Shard</h5>
+    <p class="card-text text-muted">
+      A simple shard that calls forth a random hero. Rarity weighting and banners
+      can be added later.
+    </p>
+
+    <form method="post" action="{% url 'summon-one' %}">
+      {% csrf_token %}
+      <button type="submit"
+              class="btn btn-primary"
+              {% if not profile or profile.coins < 5000 %}disabled{% endif %}>
+        Summon x1 (5,000 coins)
+      </button>
+    </form>
+
+    {% if profile and profile.coins < 5000 %}
+      <p class="text-danger mt-2 small mb-0">Not enough coins to summon.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

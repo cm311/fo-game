@@ -1,0 +1,80 @@
+{% extends "FO_game/base.html" %}
+{% block content %}
+<h1 class="mb-3">Library</h1>
+<p class="text-secondary">All known heroes by faction and rarity.</p>
+
+<table class="table table-dark table-striped table-bordered align-middle">
+  <thead>
+    <tr>
+      <th style="width: 240px;">Name</th>
+      <th>Faction</th>
+      <th>Rarity</th>
+      <th>Role</th>
+      <th>Element</th>
+      <th>HP</th>
+      <th>ATK</th>
+      <th>DEF</th>
+      <th>M.ATK</th>
+      <th>M.DEF</th>
+      <th>Speed</th>
+    </tr>
+  </thead>
+
+  <tbody>
+  {% for row in hero_rows %}
+    {% with hero=row.hero %}
+    <tr>
+      <td>
+        <div class="fw-bold">{{ hero.name }}</div>
+        <div class="text-secondary small">{{ hero.description }}</div>
+
+        <details class="mt-2">
+          <summary class="small text-info">View kit / abilities</summary>
+
+          <div class="mt-2">
+            <div class="small text-secondary">Abilities (code-defined, prototype)</div>
+
+            <ul class="mb-2">
+              {% for a in row.abilities %}
+                <li class="small">{{ a }}</li>
+              {% empty %}
+                <li class="small text-muted">(No abilities configured)</li>
+              {% endfor %}
+            </ul>
+
+            <div class="small text-secondary">Growth per level</div>
+            <ul class="mb-0">
+              <li class="small">HP +{{ hero.growth_hp }}/lvl</li>
+              <li class="small">ATK +{{ hero.growth_atk }}/lvl</li>
+              <li class="small">DEF +{{ hero.growth_def }}/lvl</li>
+              <li class="small">M.ATK +{{ hero.growth_matk }}/lvl</li>
+              <li class="small">M.DEF +{{ hero.growth_mdef }}/lvl</li>
+              <li class="small">Speed +{{ hero.growth_speed }}/lvl</li>
+            </ul>
+          </div>
+        </details>
+      </td>
+
+      <td>{{ hero.faction }}</td>
+      <td>{{ hero.rarity }}</td>
+      <td>{{ hero.role }}</td>
+      <td>{{ hero.element }}</td>
+      <td>{{ hero.base_hp }}</td>
+      <td>{{ hero.base_atk }}</td>
+      <td>{{ hero.base_def }}</td>
+      <td>{{ hero.base_matk }}</td>
+      <td>{{ hero.base_mdef }}</td>
+      <td>{{ hero.base_speed }}</td>
+    </tr>
+    {% endwith %}
+  {% empty %}
+    <tr>
+      <td colspan="11" class="text-center text-muted">
+        No heroes found. Did you run the seeding command?
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}

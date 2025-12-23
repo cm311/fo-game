@@ -1,0 +1,278 @@
+{% extends "FO_game/base.html" %}
+
+{% block content %}
+  <h1 class="mb-3">Campaign</h1>
+
+  {% if not profile %}
+    <p>No profile found. Create a user or log in.</p>
+  {% else %}
+    {% if need_squad %}
+  <div class="alert alert-info">
+    No squad selected yet. Go to <a href="{% url 'heroes' %}">Heroes</a> and save a squad.
+  </div>
+{% endif %}
+
+{% if error %}
+  <div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<div class="card bg-dark border-secondary mb-3">
+  <div class="card-body">
+    <button id="startBattleBtn" class="btn btn-primary btn-sm">Start Battle</button>
+    <button id="stepBtn" class="btn btn-outline-light btn-sm ms-2" disabled>Step</button>
+    <span id="phaseLabel" class="ms-3 text-muted small"></span>
+    <span id="turnLabel" class="ms-3 text-warning small"></span>
+
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-12">
+    <h5 class="text-danger">Enemy</h5>
+    <div id="enemyFront" class="d-flex gap-2 flex-wrap mb-2"></div>
+    <div id="enemyBack" class="d-flex gap-2 flex-wrap"></div>
+  </div>
+
+  <div class="col-12 mt-3">
+    <h5 class="text-info">Your Team</h5>
+    <div id="playerFront" class="d-flex gap-2 flex-wrap mb-2"></div>
+    <div id="playerBack" class="d-flex gap-2 flex-wrap"></div>
+  </div>
+
+  <div class="col-12 mt-3">
+    <h5>Combat Log</h5>
+    <div id="logBox" style="max-height: 300px; overflow:auto; border:1px solid #333; padding:8px;"></div>
+  </div>
+</div>
+
+<form style="display:none">
+  {% csrf_token %}
+</form>
+
+<script>
+(function(){
+  const startBtn = document.getElementById("startBattleBtn");
+  const stepBtn = document.getElementById("stepBtn");
+  const phaseLabel = document.getElementById("phaseLabel");
+
+  const enemyFront = document.getElementById("enemyFront");
+  const enemyBack  = document.getElementById("enemyBack");
+  const playerFront = document.getElementById("playerFront");
+  const playerBack  = document.getElementById("playerBack");
+  const logBox = document.getElementById("logBox");
+
+  function csrf() {
+    const el = document.querySelector("input[name=csrfmiddlewaretoken]");
+    return el ? el.value : "";
+  }
+
+  async function post(url, body) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": csrf()
+    },
+    body: body ? JSON.stringify(body) : "{}"
+  });
+
+  const text = await res.text();
+
+  // Try JSON first; if it's HTML (403 page), show it.
+  try {
+    const data = JSON.parse(text);
+    if (!res.ok && !data.error) data.error = `HTTP ${res.status}`;
+    return data;
+  } catch (e) {
+    return { ok: false, error: `HTTP ${res.status}: ${text.slice(0, 200)}` };
+  }
+}
+
+
+  function unitCard(u, side) {
+    const div = document.createElement("div");
+    div.className = "p-2 border rounded";
+    div.style.minWidth = "170px";
+    div.style.cursor = "pointer";
+    div.dataset.side = side;
+    div.dataset.row = u.row;
+    div.dataset.slot = u.slot;
+
+
+    // Highlight the unit whose turn it is
+    if (lastSnapshot && lastSnapshot.phase === "AWAIT_PLAYER_ACTION" && lastSnapshot.awaiting) {
+    const awaitingId = lastSnapshot.awaiting.actor_id ?? lastSnapshot.awaiting.actorId;
+    if (awaitingId && String(u.id) === String(awaitingId) && side === "player") {
+        div.style.outline = "3px solid #f0ad4e";
+        div.style.boxShadow = "0 0 12px rgba(240,173,78,0.6)";
+    }
+    }
+
+
+
+    const hpPct = u.max_hp ? Math.max(0, Math.floor((u.hp / u.max_hp) * 100)) : 0;
+    div.innerHTML = `
+      <div class="fw-bold">${u.name} <span class="text-muted">Lv ${u.level}</span></div>
+      <div class="small text-muted">${u.row.toUpperCase()} slot ${u.slot+1}</div>
+      <div class="small">HP: ${u.hp}/${u.max_hp} (${hpPct}%)</div>
+      <div class="small">AP: ${u.ap} / 100</div>
+      <div class="progress mt-1" style="height:6px;">
+        <div class="progress-bar bg-warning"
+            style="width:${Math.min(100, u.ap)}%"></div>
+      </div>
+    `;
+    return div;
+  }
+
+  let lastSnapshot = null;
+
+  function render(snapshot) {
+    lastSnapshot = snapshot;
+    phaseLabel.textContent = `Tick ${snapshot.tick}/${snapshot.tick_limit} — ${snapshot.phase}` + (snapshot.winner ? ` — Winner: ${snapshot.winner}` : "");
+
+
+    const turnLabel = document.getElementById("turnLabel");
+    turnLabel.textContent = "";
+
+    if (snapshot.phase === "AWAIT_PLAYER_ACTION" && snapshot.awaiting) {
+    const actorId = snapshot.awaiting.actor_id ?? snapshot.awaiting.actorId;
+
+    // find actor name in player units
+    const allPlayer = [...snapshot.player.front, ...snapshot.player.back];
+    const actor = allPlayer.find(u => String(u.id) === String(actorId));
+    if (actor) {
+        turnLabel.textContent = `TURN: ${actor.name} (click an enemy target)`;
+    } else {
+        turnLabel.textContent = `TURN: actor ${actorId}`;
+    }
+    }
+
+
+
+
+
+    function fill(container, units, side) {
+      container.innerHTML = "";
+      units.forEach(u => {
+        const c = unitCard(u, side);
+        // only enemy targets are clickable for act (MVP)
+        if (side === "enemy") {
+          c.addEventListener("click", async () => {
+            if (!lastSnapshot || lastSnapshot.phase !== "AWAIT_PLAYER_ACTION") return;
+            const data = await post("{% url 'api-battle-act' %}", {
+
+              target_side: "enemy",
+              target_row: u.row,
+              target_slot: u.slot
+            });
+            if (data.ok) render(data.snapshot);
+            else alert(data.error || "act failed");
+          });
+        }
+        container.appendChild(c);
+      });
+    }
+
+    fill(enemyFront, snapshot.enemy.front, "enemy");
+    fill(enemyBack,  snapshot.enemy.back,  "enemy");
+    fill(playerFront, snapshot.player.front, "player");
+    fill(playerBack,  snapshot.player.back,  "player");
+
+    stepBtn.disabled = snapshot.phase !== "RUNNING";
+
+    logBox.innerHTML = "";
+    snapshot.log.forEach(e => {
+      const line = document.createElement("div");
+      line.innerHTML = `<small>[${e.tick}]</small> <strong>${e.type}</strong> ${e.source || ""} ${e.target ? "→ " + e.target : ""} ${e.value ? "(" + e.value + ")" : ""}`;
+      logBox.appendChild(line);
+    });
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  startBtn.addEventListener("click", async () => {
+    const data = await post("{% url 'api-battle-start' %}", {});
+
+    if (data.ok) render(data.snapshot);
+    else alert(data.error || "start failed");
+  });
+
+  stepBtn.addEventListener("click", async () => {
+    const data = await post("{% url 'api-battle-step' %}", {});
+
+    if (data.ok) render(data.snapshot);
+    else alert(data.error || "step failed");
+  });
+})();
+</script>
+
+
+
+
+
+    {% if battle %}
+
+      {% if battle.summary %}
+        <h3>Squads</h3>
+        <div class="row">
+          <div class="col-md-6">
+            <div class="p-3 border rounded mb-3">
+              <h5 class="mb-2">Your Squad</h5>
+              <div><strong>Front:</strong> {{ battle.summary.player.front|join:", " }}</div>
+              <div><strong>Back:</strong> {{ battle.summary.player.back|join:", " }}</div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="p-3 border rounded mb-3">
+              <h5 class="mb-2">Enemy Squad</h5>
+              <div><strong>Front:</strong> {{ battle.summary.enemy.front|join:", " }}</div>
+              <div><strong>Back:</strong> {{ battle.summary.enemy.back|join:", " }}</div>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      <h2 class="mt-2">Result: {{ battle.winner|title }}</h2>
+
+      {% if battle.highlights %}
+        <h4 class="mt-3">Highlights</h4>
+        <ul>
+          {% for h in battle.highlights %}
+            <li>{{ h }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if xp_results %}
+        <h3 class="mt-4">XP Gained</h3>
+        <ul>
+          {% for hid, info in xp_results.items %}
+            <li>
+              #{{ hid }}: +{{ info.gained }} XP —
+              Level {{ info.new_level }}
+              {% if info.leveled %}(+{{ info.leveled }}){% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      <details class="mt-4">
+        <summary class="text-info">Show full battle log</summary>
+        <div style="max-height: 420px; overflow:auto; border:1px solid #333; padding:8px;" class="mt-2">
+          {% for e in battle.log %}
+            <div>
+              <small>[{{ e.tick }}]</small>
+              <strong>{{ e.type }}</strong>
+              {% if e.source %} {{ e.source }}{% endif %}
+              {% if e.target %} → {{ e.target }}{% endif %}
+              {% if e.value %} ({{ e.value }}){% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </details>
+
+    {% else %}
+      <p>No battle run yet. Summon at least 1 hero.</p>
+    {% endif %}
+  {% endif %}
+{% endblock %}
