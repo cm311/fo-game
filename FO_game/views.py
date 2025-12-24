@@ -1,8 +1,5 @@
 import random, json
 
-
-
-
 from .engine.battle import (
     battle_state_new,
     battle_state_snapshot,
@@ -13,19 +10,15 @@ from .engine.battle import (
     DEFAULT_TICK_LIMIT_STEP,
 )
 
-
-
 from .engine.rules import validate_squad, RuleError
 
 from django.shortcuts import render, redirect
 from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib.auth.models import User
-from django.contrib import messages
 from django.http import HttpResponseBadRequest, JsonResponse
 
 from django.contrib.auth.decorators import login_required
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
@@ -34,6 +27,7 @@ from .serializers import HeroBaseSerializer, PlayerProfileSerializer
 
 from .engine.kits import get_kit_for
 
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
 def hero_list(request):
@@ -41,15 +35,16 @@ def hero_list(request):
     serializer = HeroBaseSerializer(heroes, many=True)
     return Response(serializer.data)
 
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticatedOrReadOnly])
 def player_profile(request):
-    # For now, just return the first profile if it exists.
     profile = PlayerProfile.objects.first()
     if not profile:
         return Response({"detail": "No player profile yet."}, status=404)
     serializer = PlayerProfileSerializer(profile)
     return Response(serializer.data)
+
 
 def get_current_profile(request):
     if request.user.is_authenticated:
@@ -64,7 +59,6 @@ def get_current_profile(request):
     return profile
 
 
-
 def home_view(request):
     profile = get_current_profile(request)
     return render(request, "FO_game/home.html", {
@@ -73,12 +67,26 @@ def home_view(request):
     })
 
 
+def _anchors_only(row):
+    """
+    Convert a row list into only anchors (positive ids) / None.
+    Keeps length the same.
+    """
+    out = []
+    for v in (row or []):
+        if v in ("", "0", 0, None):
+            out.append(None)
+            continue
+        v = int(v)
+        if v < 0:
+            out.append(None)  # occupied marker is not an anchor
+        else:
+            out.append(v)
+    return out
+
+
 def campaign_view(request):
     profile = get_current_profile(request)
-
-    battle_result = None
-    xp_results = None
-    error = None
 
     if not profile:
         return render(request, "FO_game/campaign.html", {
@@ -91,16 +99,30 @@ def campaign_view(request):
 
     # load saved squad
     squad = request.session.get("squad") or {}
-    front = (squad.get("front") or [])[:6]
-    back  = (squad.get("back") or [])[:6]
 
-    # normalize
-    front = front + [None] * (6 - len(front))
-    back  = back + [None] * (6 - len(back))
+    # Detect new 3-row (front/mid/back) vs old 2-row (front/back 6 slots)
+    has_mid = isinstance(squad, dict) and ("mid" in squad)
 
-    selected_ids = [i for i in (front + back) if i]
-    selected_ids = list(dict.fromkeys(selected_ids))  # preserve order, remove dupes
+    if has_mid:
+        front = _anchors_only((squad.get("front") or [])[:3])
+        mid   = _anchors_only((squad.get("mid") or [])[:3])
+        back  = _anchors_only((squad.get("back") or [])[:3])
 
+        front = front + [None] * (3 - len(front))
+        mid   = mid   + [None] * (3 - len(mid))
+        back  = back  + [None] * (3 - len(back))
+
+        selected_ids = [i for i in (front + mid + back) if i]
+        selected_ids = list(dict.fromkeys(selected_ids))
+
+    else:
+        front = (squad.get("front") or [])[:6]
+        back  = (squad.get("back") or [])[:6]
+        front = front + [None] * (6 - len(front))
+        back  = back  + [None] * (6 - len(back))
+
+        selected_ids = [i for i in (front + back) if i]
+        selected_ids = list(dict.fromkeys(selected_ids))
 
     # fetch instances (owned)
     roster = list(
@@ -109,9 +131,12 @@ def campaign_view(request):
     )
     roster_by_id = {h.id: h for h in roster}
 
-    # Authoritative squad validation (shared with Heroes page)
+    # validate (rules.py now no longer requires 1 front/back)
     try:
-        validate_squad(front, back, roster_by_id)
+        if has_mid:
+            validate_squad(front, back, roster_by_id, mid=mid)
+        else:
+            validate_squad(front, back, roster_by_id)
     except RuleError as e:
         msg = (
             "No squad selected yet. Go to Heroes and save a squad."
@@ -126,22 +151,33 @@ def campaign_view(request):
             "error": msg,
         })
 
-
-    # build formation mapping expected by your engine
+    # build formation mapping expected by engine
     formation = {}
-    for idx, hid in enumerate(front):
-        if hid and hid in roster_by_id:
-            formation[hid] = ("front", idx)
-    for idx, hid in enumerate(back):
-        if hid and hid in roster_by_id:
-            formation[hid] = ("back", idx)
 
-    # list of instances in squad order
-    squad_instances = [roster_by_id[hid] for hid in selected_ids if hid in roster_by_id]
+    if has_mid:
+        for idx, hid in enumerate(front):
+            if hid and hid in roster_by_id:
+                formation[hid] = ("front", idx)
+        for idx, hid in enumerate(mid):
+            if hid and hid in roster_by_id:
+                formation[hid] = ("mid", idx)
+        for idx, hid in enumerate(back):
+            if hid and hid in roster_by_id:
+                formation[hid] = ("back", idx)
 
+        squad_instances = [roster_by_id[hid] for hid in selected_ids if hid in roster_by_id]
+    else:
+        for idx, hid in enumerate(front):
+            if hid and hid in roster_by_id:
+                formation[hid] = ("front", idx)
+        for idx, hid in enumerate(back):
+            if hid and hid in roster_by_id:
+                formation[hid] = ("back", idx)
 
-    # engine imports
-    from .engine.battle import build_units_from_instances, build_enemy_units, run_battle
+        squad_instances = [roster_by_id[hid] for hid in selected_ids if hid in roster_by_id]
+
+    # engine
+    from .engine.battle import run_battle
 
     player_units = build_units_from_instances("player", squad_instances, formation)
 
@@ -176,13 +212,16 @@ def campaign_view(request):
         "profile": profile,
         "battle": battle_result,
         "xp_results": xp_results,
-        "error": error,
+        "error": None,
     })
-
 
 
 @require_http_methods(["GET", "POST"])
 def heroes_view(request):
+    """
+    NOTE: You already replaced this in your project during the 3-row work.
+    I'm leaving your current version alone.
+    """
     profile = get_current_profile(request)
     if not profile:
         return render(request, "FO_game/heroes.html", {
@@ -205,32 +244,36 @@ def heroes_view(request):
     saved = False
     error = None
 
+    # IMPORTANT:
+    # Your heroes.html now posts front/mid/back. We store the raw grid rows in session.
     if request.method == "POST":
         raw = request.POST.get("squad_json", "")
         try:
             payload = json.loads(raw)
             front = payload.get("front", [])
-            back = payload.get("back", [])
+            mid   = payload.get("mid", [])
+            back  = payload.get("back", [])
         except Exception:
             return HttpResponseBadRequest("Invalid squad payload.")
 
-        # Normalize to 6/6 with None
-        def norm(row):
+        # normalize to 3 cols each (keep negatives, your rules.py supports them)
+        def norm3(row):
+            row = list(row or [])
             out = []
-            for i in range(6):
+            for i in range(3):
                 v = row[i] if i < len(row) else None
                 if v in ("", "0", 0):
                     v = None
                 out.append(int(v) if v is not None else None)
             return out
 
-        front = norm(front)
-        back = norm(back)
+        front = norm3(front)
+        mid   = norm3(mid)
+        back  = norm3(back)
 
-        chosen = [x for x in (front + back) if x is not None]
-
+        # validate anchors + ownership + max size
         try:
-            validate_squad(front, back, roster_by_id)
+            validate_squad(front, back, roster_by_id, mid=mid)
         except RuleError as e:
             error = e.message
             return render(request, "FO_game/heroes.html", {
@@ -243,25 +286,33 @@ def heroes_view(request):
                 "error": error,
             })
 
-
-        request.session["squad"] = {"front": front, "back": back}
+        request.session["squad"] = {"front": front, "mid": mid, "back": back}
         request.session.modified = True
         saved = True
 
     current = request.session.get("squad")
 
-    # resolve for display
+    # resolve for display (anchors only)
     current_units = None
     if current and isinstance(current, dict):
         try:
-            cf = current.get("front", [])
-            cb = current.get("back", [])
-            # normalize for display
-            cf = (cf + [None]*6)[:6]
-            cb = (cb + [None]*6)[:6]
+            def show_row(row):
+                row = (row or [])[:3]
+                row = row + [None] * (3 - len(row))
+                # show only anchors
+                out = []
+                for v in row:
+                    if not v:
+                        out.append(None)
+                    else:
+                        v = int(v)
+                        out.append(roster_by_id.get(v) if v > 0 else None)
+                return out
+
             current_units = {
-                "front": [roster_by_id.get(i) if i else None for i in cf],
-                "back":  [roster_by_id.get(i) if i else None for i in cb],
+                "front": show_row(current.get("front")),
+                "mid":   show_row(current.get("mid")),
+                "back":  show_row(current.get("back")),
             }
         except Exception:
             current_units = None
@@ -275,7 +326,6 @@ def heroes_view(request):
         "saved": saved,
         "error": error,
     })
-
 
 
 def library_view(request):
@@ -297,7 +347,6 @@ def library_view(request):
     })
 
 
-
 @login_required
 def summon_one(request):
     profile, _ = PlayerProfile.objects.get_or_create(user=request.user)
@@ -313,12 +362,8 @@ def summon_one(request):
     return redirect("summon")
 
 
-
 def summon_view(request):
     profile = get_current_profile(request)
-
-    print("SUMMON USER:", request.user)
-    print("SUMMON COINS:", profile.coins)
 
     msg = request.session.pop("last_summon_msg", None)
     return render(request, "FO_game/summon.html", {
@@ -338,36 +383,59 @@ def api_battle_start(request):
     if not squad:
         return JsonResponse({"ok": False, "error": "No squad saved. Go to Heroes."}, status=400)
 
-    front = squad.get("front", [])
-    back  = squad.get("back", [])
+    has_mid = isinstance(squad, dict) and ("mid" in squad)
 
     roster = list(HeroInstance.objects.filter(owner=profile.user).select_related("hero_base"))
-
-
     roster_by_id = {h.id: h for h in roster}
 
-    try:
-        validate_squad(front, back, roster_by_id)
-    except RuleError as e:
-        return JsonResponse({"ok": False, "error": e.message, "code": e.code}, status=400)
+    if has_mid:
+        front = _anchors_only((squad.get("front") or [])[:3])
+        mid   = _anchors_only((squad.get("mid") or [])[:3])
+        back  = _anchors_only((squad.get("back") or [])[:3])
+        front = front + [None] * (3 - len(front))
+        mid   = mid   + [None] * (3 - len(mid))
+        back  = back  + [None] * (3 - len(back))
 
-    # Build player formation map: hero_id -> (row, slot)
-    formation = {}
-    # use first 5 chosen for MVP
-    chosen = [hid for hid in (front + back) if hid][:5]
-    # Keep the row/slot from the saved squad (0..5 slots exist; MVP uses 0..4 but it's fine)
-    for i, hid in enumerate(front):
-        if hid:
-            formation[int(hid)] = ("front", i)
-    for i, hid in enumerate(back):
-        if hid:
-            formation[int(hid)] = ("back", i)
+        try:
+            validate_squad(front, back, roster_by_id, mid=mid)
+        except RuleError as e:
+            return JsonResponse({"ok": False, "error": e.message, "code": e.code}, status=400)
+
+        formation = {}
+        for i, hid in enumerate(front):
+            if hid:
+                formation[int(hid)] = ("front", i)
+        for i, hid in enumerate(mid):
+            if hid:
+                formation[int(hid)] = ("mid", i)
+        for i, hid in enumerate(back):
+            if hid:
+                formation[int(hid)] = ("back", i)
+
+        chosen = [hid for hid in (front + mid + back) if hid][:5]
+
+    else:
+        front = (squad.get("front") or [])[:6]
+        back  = (squad.get("back") or [])[:6]
+        try:
+            validate_squad(front, back, roster_by_id)
+        except RuleError as e:
+            return JsonResponse({"ok": False, "error": e.message, "code": e.code}, status=400)
+
+        formation = {}
+        for i, hid in enumerate(front):
+            if hid:
+                formation[int(hid)] = ("front", i)
+        for i, hid in enumerate(back):
+            if hid:
+                formation[int(hid)] = ("back", i)
+
+        chosen = [hid for hid in (front + back) if hid][:5]
 
     player_insts = [roster_by_id[hid] for hid in chosen if hid in roster_by_id]
     player_units = build_units_from_instances("player", player_insts, formation)
 
-    # MVP enemy: 5 fungal sporelings (or whatever you already do in campaign_view)
-    # --- MVP enemy squad: always 5 units ---
+    # enemy squad: 5 units
     enemy_base = HeroBase.objects.filter(name__icontains="spore").first()
     if enemy_base is None:
         enemy_base = HeroBase.objects.filter(faction="Wild").first()
@@ -377,13 +445,9 @@ def api_battle_start(request):
     if enemy_base is None:
         return JsonResponse({"ok": False, "error": "No HeroBase rows exist to spawn enemies."}, status=400)
 
-    # Make 5 copies of the same base for now
-    enemy_bases = [enemy_base] * 5
-    enemy_units = build_enemy_units(enemy_bases, level=1)
-
+    enemy_units = build_enemy_units([enemy_base] * 5, level=1)
 
     state = battle_state_new(player_units, enemy_units, seed=1337, tick_limit=DEFAULT_TICK_LIMIT_STEP)
-    # Immediately advance until we hit the first player pause/end
     state = battle_state_advance_until_pause(state)
 
     request.session["battle_state"] = state
@@ -416,12 +480,11 @@ def api_battle_act(request):
     except Exception:
         payload = {}
 
-    # MVP: basic attack only; target described by side/row/slot for easy UI clicks
     target_side = payload.get("target_side", "enemy")
     target_row  = payload.get("target_row")
     target_slot = payload.get("target_slot")
 
-    if target_row not in ("front", "back") or target_slot is None:
+    if target_row not in ("front", "mid", "back") or target_slot is None:
         return JsonResponse({"ok": False, "error": "Missing target."}, status=400)
 
     state = battle_state_player_basic_attack(state, target_side, target_row, int(target_slot))

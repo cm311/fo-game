@@ -21,7 +21,7 @@
       <div class="card-body">
         <div class="small text-muted mb-3">
           Prototype rules: pick up to <strong>5</strong> total units for now.
-          Must have <strong>at least 1</strong> in <strong>Front</strong> and <strong>at least 1</strong> in <strong>Back</strong>.
+          (Front/Mid/Back is now <strong>3/3/3</strong>.)
         </div>
 
         <form method="post" id="squadForm">
@@ -43,9 +43,9 @@
           <div class="small text-muted mb-2" id="hint">Select a slot.</div>
 
           <!-- Front -->
-          <h6 class="text-info mb-2">Front (6 slots)</h6>
+          <h6 class="text-info mb-2">Front (3 slots)</h6>
           <div class="row g-2 mb-3">
-            {% for i in "012345" %}
+            {% for i in "012" %}
               <div class="col-4">
                 <div class="slot border border-secondary rounded p-2 text-center"
                      data-row="front"
@@ -58,10 +58,26 @@
             {% endfor %}
           </div>
 
+          <!-- Mid -->
+          <h6 class="text-primary mb-2">Mid (3 slots)</h6>
+          <div class="row g-2 mb-3">
+            {% for i in "012" %}
+              <div class="col-4">
+                <div class="slot border border-secondary rounded p-2 text-center"
+                     data-row="mid"
+                     data-idx="{{ forloop.counter0 }}">
+                  <div class="text-muted small">Mid {{ forloop.counter }}</div>
+                  <div class="slot-name fw-bold">Empty</div>
+                  <div class="slot-sub small text-muted">&nbsp;</div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+
           <!-- Back -->
-          <h6 class="text-warning mb-2">Back (6 slots)</h6>
+          <h6 class="text-warning mb-2">Back (3 slots)</h6>
           <div class="row g-2">
-            {% for i in "012345" %}
+            {% for i in "012" %}
               <div class="col-4">
                 <div class="slot border border-secondary rounded p-2 text-center"
                      data-row="back"
@@ -90,6 +106,17 @@
               {% endfor %}
             </div>
           </div>
+
+          <div class="mb-2">
+            <div class="text-primary fw-bold">Mid</div>
+            <div>
+              {% for h in current_units.mid %}
+                {% if h %}{{ h.hero_base.name }} (Lv {{ h.level }}){% else %}<span class="text-muted">Empty</span>{% endif %}
+                {% if not forloop.last %}, {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+
           <div>
             <div class="text-warning fw-bold">Back</div>
             <div>
@@ -132,7 +159,8 @@
                      data-hero-level="{{ inst.level }}"
                      data-hero-faction="{{ inst.hero_base.faction|escape }}"
                      data-hero-rarity="{{ inst.hero_base.rarity|escape }}"
-                     data-hero-role="{{ inst.hero_base.role|escape }}">
+                     data-hero-role="{{ inst.hero_base.role|escape }}"
+                     data-hero-size="{{ inst.hero_base.size|default:'Normal'|escape }}">
                   <div class="card-body p-2 d-flex flex-column">
                     <div class="fw-bold small d-flex justify-content-between align-items-center">
                       <span>
@@ -144,6 +172,7 @@
 
                     <div class="small text-muted">
                       {{ inst.hero_base.faction }} · {{ inst.hero_base.rarity }} · {{ inst.hero_base.role }}
+                      {% if inst.hero_base.size %}· {{ inst.hero_base.size }}{% endif %}
                     </div>
 
                     <div class="mt-2 small">
@@ -179,6 +208,7 @@
   .slot:hover { background: rgba(255,255,255,.05); }
   .slot.active { outline: 2px solid rgba(255,255,255,.55); box-shadow: 0 0 0 3px rgba(255,255,255,.10); }
   .slot.filled { background: rgba(255,255,255,.06); }
+  .slot.occupied { border-color: rgba(255,210,122,0.35) !important; background: rgba(255,210,122,0.06) !important; }
   .hero-card { cursor: pointer; user-select: none; transition: transform .06s ease, box-shadow .06s ease; }
   .hero-card:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0,0,0,.25); }
   .hero-card.assigned { opacity: .55; }
@@ -186,6 +216,9 @@
 
 <script>
 (() => {
+  const ROWS = ["front", "mid", "back"];
+  const COLS = 3;
+
   const slots = Array.from(document.querySelectorAll(".slot"));
   const heroCards = Array.from(document.querySelectorAll(".hero-card"));
   const heroCols = Array.from(document.querySelectorAll(".hero-col"));
@@ -205,14 +238,32 @@
     initial = null;
   }
 
+  // Grid encoding:
+  //  +id = anchor
+  //  -id = occupied (non-anchor)
+  //  null = empty
   const squad = {
-    front: Array(6).fill(null),
-    back:  Array(6).fill(null),
+    front: Array(COLS).fill(null),
+    mid:   Array(COLS).fill(null),
+    back:  Array(COLS).fill(null),
   };
 
-  if (initial && initial.front && initial.back) {
-    (initial.front || []).forEach((id, i) => { if (i < 6 && id) squad.front[i] = Number(id); });
-    (initial.back  || []).forEach((id, i) => { if (i < 6 && id) squad.back[i]  = Number(id); });
+  function clampRow(rowArr) {
+    const out = Array(COLS).fill(null);
+    (rowArr || []).slice(0, COLS).forEach((v, i) => {
+      if (v === "" || v === "0" || v === 0) out[i] = null;
+      else out[i] = (v == null ? null : Number(v));
+    });
+    return out;
+  }
+
+  // Backward compat:
+  // - If old data had 6 slots, we just take first 3
+  // - If old data had no mid, start empty
+  if (initial) {
+    if (initial.front) squad.front = clampRow(initial.front);
+    if (initial.mid)   squad.mid   = clampRow(initial.mid);
+    if (initial.back)  squad.back  = clampRow(initial.back);
   }
 
   let active = { row: "front", idx: 0 };
@@ -226,17 +277,64 @@
     hint.textContent = `Selected: ${row.toUpperCase()} ${idx+1}. Click a hero to assign.`;
   }
 
-  function findHeroLocation(heroId) {
-    heroId = Number(heroId);
-    for (let i = 0; i < 6; i++) {
-      if (squad.front[i] === heroId) return { row: "front", idx: i };
-      if (squad.back[i]  === heroId) return { row: "back",  idx: i };
+  function heroSize(heroId) {
+    const card = heroCards.find(c => Number(c.dataset.heroId) === Number(heroId));
+    const size = (card?.dataset?.heroSize || "Normal").trim();
+    return size || "Normal";
+  }
+
+  function footprint(size) {
+    // top-left anchor; "down" means towards back (front->mid->back)
+    if (size === "Huge")  return { w: 2, h: 2 };
+    if (size === "Large") return { w: 1, h: 2 };
+    return { w: 1, h: 1 };
+  }
+
+  function rowIndex(row) {
+    return ROWS.indexOf(row);
+  }
+
+  function getCell(row, col) {
+    return squad[row][col];
+  }
+
+  function setCell(row, col, val) {
+    squad[row][col] = val;
+  }
+
+  function cellsForAnchor(anchorRow, anchorCol, size) {
+    const { w, h } = footprint(size);
+    const r0 = rowIndex(anchorRow);
+    const out = [];
+    for (let dy = 0; dy < h; dy++) {
+      for (let dx = 0; dx < w; dx++) {
+        const r = r0 + dy;
+        const c = anchorCol + dx;
+        out.push({ r, c });
+      }
     }
-    return null;
+    return out;
+  }
+
+  function inBounds(r, c) {
+    return r >= 0 && r < ROWS.length && c >= 0 && c < COLS;
+  }
+
+  function clearHeroEverywhere(heroId) {
+    heroId = Number(heroId);
+    for (const row of ROWS) {
+      for (let c = 0; c < COLS; c++) {
+        const v = getCell(row, c);
+        if (v === heroId || v === -heroId) setCell(row, c, null);
+      }
+    }
   }
 
   function clearSlot(row, idx) {
-    squad[row][idx] = null;
+    const v = getCell(row, idx);
+    if (!v) return;
+    const heroId = Math.abs(Number(v));
+    clearHeroEverywhere(heroId);
     render();
   }
 
@@ -246,36 +344,81 @@
   }
 
   function clearAll() {
-    squad.front = Array(6).fill(null);
-    squad.back  = Array(6).fill(null);
+    for (const row of ROWS) squad[row] = Array(COLS).fill(null);
     render();
+  }
+
+  function canPlace(heroId, anchorRow, anchorCol) {
+    heroId = Number(heroId);
+    const size = heroSize(heroId);
+    const cells = cellsForAnchor(anchorRow, anchorCol, size);
+
+    for (const cell of cells) {
+      if (!inBounds(cell.r, cell.c)) return { ok: false, reason: `${size} doesn't fit there.` };
+    }
+
+    for (const cell of cells) {
+      const rowName = ROWS[cell.r];
+      const v = getCell(rowName, cell.c);
+      if (v == null) continue;
+      const existingId = Math.abs(Number(v));
+      if (existingId !== heroId) return { ok: false, reason: `Space is already occupied.` };
+    }
+
+    return { ok: true, reason: "" };
+  }
+
+  function stampPlacement(heroId, anchorRow, anchorCol) {
+    heroId = Number(heroId);
+    const size = heroSize(heroId);
+    const cells = cellsForAnchor(anchorRow, anchorCol, size);
+
+    clearHeroEverywhere(heroId);
+
+    setCell(anchorRow, anchorCol, heroId);
+
+    const r0 = rowIndex(anchorRow);
+    for (const cell of cells) {
+      const rowName = ROWS[cell.r];
+      const isAnchor = (cell.r === r0 && cell.c === anchorCol);
+      if (!isAnchor) setCell(rowName, cell.c, -heroId);
+    }
   }
 
   function assign(heroId) {
     if (!active) return;
     heroId = Number(heroId);
 
-    // toggle-off if same hero already in the selected slot
-    const existing = squad[active.row][active.idx];
+    const existing = getCell(active.row, active.idx);
     if (existing === heroId) {
-      squad[active.row][active.idx] = null;
+      clearHeroEverywhere(heroId);
       render();
       return;
     }
 
-    // move behavior: if already assigned elsewhere, remove first
-    const prev = findHeroLocation(heroId);
-    if (prev) squad[prev.row][prev.idx] = null;
+    const cur = getCell(active.row, active.idx);
+    if (cur) clearHeroEverywhere(Math.abs(Number(cur)));
 
-    // assign
-    squad[active.row][active.idx] = heroId;
+    const check = canPlace(heroId, active.row, active.idx);
+    if (!check.ok) {
+      hint.textContent = `Can't place: ${check.reason}`;
+      return;
+    }
+
+    stampPlacement(heroId, active.row, active.idx);
     render();
   }
 
   function refreshAssignedStyling() {
     const loc = new Map();
-    squad.front.forEach((id, i) => { if (id) loc.set(Number(id), `F${i+1}`); });
-    squad.back.forEach((id, i)  => { if (id) loc.set(Number(id), `B${i+1}`); });
+    const letter = { front: "F", mid: "M", back: "B" };
+
+    for (const row of ROWS) {
+      for (let c = 0; c < COLS; c++) {
+        const v = getCell(row, c);
+        if (v && v > 0) loc.set(Number(v), `${letter[row]}${c+1}`);
+      }
+    }
 
     heroCards.forEach(card => {
       const id = Number(card.dataset.heroId);
@@ -287,29 +430,42 @@
   }
 
   function render() {
-    // update slots
     slots.forEach(slot => {
       const row = slot.dataset.row;
       const idx = Number(slot.dataset.idx);
-      const id = squad[row][idx];
+      const v = getCell(row, idx);
 
       const nameEl = slot.querySelector(".slot-name");
       const subEl = slot.querySelector(".slot-sub");
 
-      if (!id) {
-        slot.classList.remove("filled");
+      slot.classList.remove("filled", "occupied");
+      slot.dataset.occupant = "";
+
+      if (!v) {
         nameEl.textContent = "Empty";
         subEl.innerHTML = "&nbsp;";
+        return;
+      }
+
+      const heroId = Math.abs(Number(v));
+      const card = heroCards.find(c => Number(c.dataset.heroId) === heroId);
+
+      if (v < 0) {
+        slot.classList.add("occupied");
+        slot.dataset.occupant = String(heroId);
+        nameEl.textContent = "Occupied";
+        subEl.textContent = card ? card.dataset.heroName : `#${heroId}`;
+        return;
+      }
+
+      slot.classList.add("filled");
+      if (card) {
+        nameEl.textContent = `${card.dataset.heroName} (Lv ${card.dataset.heroLevel})`;
+        const size = (card.dataset.heroSize || "Normal");
+        subEl.textContent = `${card.dataset.heroFaction} · ${card.dataset.heroRarity} · ${size}`;
       } else {
-        slot.classList.add("filled");
-        const card = heroCards.find(c => Number(c.dataset.heroId) === id);
-        if (card) {
-          nameEl.textContent = `${card.dataset.heroName} (Lv ${card.dataset.heroLevel})`;
-          subEl.textContent = `${card.dataset.heroFaction} · ${card.dataset.heroRarity}`;
-        } else {
-          nameEl.textContent = `#${id}`;
-          subEl.textContent = "";
-        }
+        nameEl.textContent = `#${heroId}`;
+        subEl.textContent = "";
       }
     });
 
@@ -317,14 +473,12 @@
     refreshAssignedStyling();
   }
 
-  // Slot click => select
   slots.forEach(slot => {
     slot.addEventListener("click", () => {
       setActive(slot.dataset.row, Number(slot.dataset.idx));
     });
   });
 
-  // Hero click => assign
   heroCards.forEach(card => {
     card.addEventListener("click", () => assign(card.dataset.heroId));
     card.addEventListener("keydown", (e) => {
@@ -335,7 +489,6 @@
   clearActiveBtn.addEventListener("click", clearActive);
   clearAllBtn.addEventListener("click", clearAll);
 
-  // search filter
   if (heroSearch) {
     heroSearch.addEventListener("input", () => {
       const q = heroSearch.value.trim().toLowerCase();
@@ -345,18 +498,17 @@
           (card.dataset.heroName || "") + " " +
           (card.dataset.heroFaction || "") + " " +
           (card.dataset.heroRarity || "") + " " +
-          (card.dataset.heroRole || "")
+          (card.dataset.heroRole || "") + " " +
+          (card.dataset.heroSize || "")
         ).toLowerCase();
         col.style.display = hay.includes(q) ? "" : "none";
       });
     });
   }
 
-
-
-  // init
   render();
   setActive("front", 0);
 })();
 </script>
+
 {% endblock %}

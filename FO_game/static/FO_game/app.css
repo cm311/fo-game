@@ -1,0 +1,452 @@
+/* =========================================================
+   Fractured Order - Readable Dark Theme (Xeno x FFT)
+   Fixes: low-contrast text + overflow/clipping issues
+   ========================================================= */
+
+/* ---------- Theme Tokens ---------- */
+:root{
+  --bg-0: #070a10;
+  --bg-1: #0b1018;
+
+  --panel: rgba(18, 24, 34, 0.92);
+  --panel-2: rgba(24, 32, 46, 0.92);
+
+  --line-1: rgba(255,255,255,0.10);
+  --line-2: rgba(255,255,255,0.16);
+  --line-3: rgba(120,160,255,0.34);
+
+  /* IMPORTANT: brighter text */
+  --text-0: rgba(255,255,255,0.96);
+  --text-1: rgba(255,255,255,0.88);
+  --text-2: rgba(255,255,255,0.74);
+  --text-3: rgba(255,255,255,0.60);
+
+  --accent: #89b6ff;
+  --accent-2: #a78bfa;
+  --gold: #ffd27a;
+  --ok: #44e2c4;
+  --danger: #ff5a7a;
+
+  --shadow-1: 0 12px 30px rgba(0,0,0,0.52);
+  --shadow-2: 0 20px 55px rgba(0,0,0,0.62);
+
+  --radius: 14px;
+  --radius-sm: 12px;
+
+  --focus: 0 0 0 3px rgba(137,182,255,0.30);
+}
+
+/* ---------- Global ---------- */
+html, body { height: 100%; }
+
+body{
+  background:
+    radial-gradient(1200px 800px at 15% 8%, rgba(137,182,255,0.16), transparent 60%),
+    radial-gradient(900px 650px at 86% 12%, rgba(167,139,250,0.14), transparent 58%),
+    radial-gradient(750px 650px at 55% 92%, rgba(255,210,122,0.08), transparent 60%),
+    linear-gradient(180deg, var(--bg-0), #04060c 75%, #02030a);
+  color: var(--text-1);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.55;
+  letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+
+  /* Fixes overflow on wide content */
+  overflow-x: hidden;
+}
+
+/* Make everything default readable */
+p, li, td, th, label, div, span{
+  color: var(--text-1);
+}
+
+/* Links */
+a{ color: var(--accent); text-decoration: none; }
+a:hover{ color: #c6dcff; text-decoration: underline; }
+
+/* ---------- Layout / Container ---------- */
+.container, .container-fluid{
+  padding-left: 18px;
+  padding-right: 18px;
+}
+
+/* Prevent accidental horizontal scroll from long text/cards */
+.row, .page-panel, .hero-card, .slot{
+  max-width: 100%;
+}
+
+/* ---------- Navbar ---------- */
+.navbar.bg-dark{
+  background: rgba(8, 12, 18, 0.72) !important;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line-1);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.35);
+}
+
+.navbar .navbar-brand{
+  color: var(--text-0) !important;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.95rem;
+}
+
+.navbar .nav-link{
+  color: var(--text-2) !important;
+  padding: 10px 12px;
+  border-radius: 12px;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.navbar .nav-link:hover{
+  color: var(--text-0) !important;
+  background: rgba(137,182,255,0.12);
+  transform: translateY(-1px);
+}
+
+.navbar .nav-link.active, .navbar .nav-link[aria-current="page"]{
+  color: var(--text-0) !important;
+  background:
+    linear-gradient(135deg, rgba(137,182,255,0.24), rgba(167,139,250,0.20));
+  border: 1px solid rgba(137,182,255,0.22);
+}
+
+.navbar-toggler{
+  border-color: rgba(255,255,255,0.22) !important;
+}
+.navbar-toggler:focus{
+  box-shadow: var(--focus) !important;
+}
+
+/* ---------- Headings ---------- */
+h1, h2, h3, h4{
+  color: var(--text-0);
+  letter-spacing: 0.02em;
+}
+
+h1{
+  font-weight: 900;
+  font-size: 2.15rem;
+  margin: 14px 0 18px;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.35);
+}
+
+h2{
+  font-weight: 800;
+  font-size: 1.35rem;
+  margin: 14px 0 10px;
+}
+
+/* ---------- Panels ---------- */
+.page-panel{
+  background:
+    linear-gradient(180deg, rgba(28, 38, 56, 0.86), rgba(16, 22, 32, 0.92));
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-1);
+  position: relative;
+  overflow: hidden;
+}
+
+.page-panel::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(820px 260px at 10% 0%, rgba(137,182,255,0.14), transparent 60%),
+    radial-gradient(760px 260px at 90% 0%, rgba(167,139,250,0.12), transparent 60%);
+  pointer-events:none;
+}
+
+.page-panel::after{
+  content:"";
+  position:absolute;
+  top:-1px; left:-1px; right:-1px;
+  height: 46px;
+  background: linear-gradient(90deg, rgba(137,182,255,0.18), rgba(167,139,250,0.16), rgba(255,210,122,0.08));
+  opacity: 0.65;
+  pointer-events:none;
+  mask-image: linear-gradient(180deg, black, transparent);
+}
+
+.page-panel > *{ position: relative; z-index: 1; }
+
+/* ---------- Section Titles ---------- */
+.section-title{
+  font-size: 0.98rem;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  color: rgba(255,255,255,0.92);
+}
+
+.section-subtitle{
+  color: var(--text-2);
+  font-size: 0.92rem;
+}
+
+/* ---------- Buttons ---------- */
+.btn{
+  border-radius: 12px !important;
+  font-weight: 750 !important;
+  letter-spacing: 0.02em;
+  box-shadow: 0 10px 18px rgba(0,0,0,0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.btn:hover{ transform: translateY(-1px); box-shadow: 0 16px 26px rgba(0,0,0,0.35); }
+.btn:active{ transform: translateY(0px) scale(0.99); }
+.btn:focus{ box-shadow: var(--focus) !important; }
+
+.btn-primary{
+  background: linear-gradient(135deg, rgba(137,182,255,0.98), rgba(98,150,255,0.92)) !important;
+  border: 1px solid rgba(137,182,255,0.46) !important;
+  color: rgba(0,0,0,0.86) !important;
+}
+.btn-primary:hover{ filter: brightness(1.06); }
+
+.btn-outline-light{
+  border-color: rgba(255,255,255,0.26) !important;
+  color: rgba(255,255,255,0.90) !important;
+}
+.btn-outline-light:hover{
+  background: rgba(255,255,255,0.10) !important;
+  border-color: rgba(137,182,255,0.38) !important;
+  color: rgba(255,255,255,0.98) !important;
+}
+
+.btn-warning{
+  background: linear-gradient(135deg, rgba(255,210,122,0.98), rgba(255,168,70,0.92)) !important;
+  border: 1px solid rgba(255,210,122,0.46) !important;
+  color: rgba(0,0,0,0.84) !important;
+}
+
+/* ---------- Alerts ---------- */
+.alert{
+  border-radius: 14px;
+  border: 1px solid var(--line-1);
+  background: rgba(12, 16, 24, 0.86);
+  color: var(--text-0) !important;
+  box-shadow: var(--shadow-1);
+}
+
+.alert *{ color: var(--text-0) !important; }
+
+.alert-success{
+  border-color: rgba(68,226,196,0.40);
+  background: linear-gradient(180deg, rgba(68,226,196,0.14), rgba(12,16,24,0.90));
+}
+.alert-danger{
+  border-color: rgba(255,90,122,0.40);
+  background: linear-gradient(180deg, rgba(255,90,122,0.14), rgba(12,16,24,0.90));
+}
+.alert-info{
+  border-color: rgba(137,182,255,0.42);
+  background: linear-gradient(180deg, rgba(137,182,255,0.14), rgba(12,16,24,0.90));
+}
+.alert-warning{
+  border-color: rgba(255,210,122,0.42);
+  background: linear-gradient(180deg, rgba(255,210,122,0.14), rgba(12,16,24,0.90));
+}
+
+/* ---------- Forms / Inputs ---------- */
+.form-control, .form-select, input[type="text"], input[type="search"]{
+  background: rgba(6, 10, 16, 0.58) !important;
+  border: 1px solid rgba(255,255,255,0.18) !important;
+  color: var(--text-0) !important;
+  border-radius: 12px !important;
+}
+
+.form-control::placeholder, input::placeholder{
+  color: rgba(255,255,255,0.55) !important;
+}
+
+.form-control:focus, .form-select:focus, input:focus{
+  border-color: rgba(137,182,255,0.50) !important;
+  box-shadow: var(--focus) !important;
+}
+
+/* ---------- Text Utilities ---------- */
+.text-muted{ color: var(--text-2) !important; }
+.small, small{ color: var(--text-2) !important; }
+
+/* ---------- HERO PAGE SPECIFIC READABILITY FIXES ---------- */
+/* Make sure anything inside the main content is bright */
+main, main *{
+  color: var(--text-1);
+}
+
+/* Your hero cards contain lots of <small> / muted bits.
+   Force brighter text inside cards. */
+.hero-card, .hero-card *{
+  color: var(--text-0) !important;
+}
+
+/* But keep secondary lines slightly dimmer */
+.hero-card .text-muted,
+.hero-card small,
+.hero-card .muted,
+.hero-card .subline{
+  color: var(--text-2) !important;
+}
+
+/* Stats more readable */
+.stat-line{
+  font-size: 0.95rem;
+  color: var(--text-1) !important;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.55);
+}
+
+/* ---------- Hero Cards ---------- */
+.hero-card{
+  background:
+    linear-gradient(180deg, rgba(36, 48, 70, 0.92), rgba(14, 18, 26, 0.92));
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius);
+  padding: 12px 12px;
+  margin-bottom: 10px;
+
+  cursor: pointer;
+  box-shadow: var(--shadow-1);
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+  position: relative;
+  overflow: hidden; /* prevents gradient spill */
+}
+
+.hero-card::before{
+  content:"";
+  position:absolute;
+  inset:-1px;
+  background:
+    radial-gradient(520px 190px at 12% 0%, rgba(137,182,255,0.18), transparent 58%),
+    radial-gradient(520px 210px at 88% 0%, rgba(167,139,250,0.16), transparent 60%);
+  opacity: 0.90;
+  pointer-events:none;
+}
+
+.hero-card:hover{
+  transform: translateY(-2px);
+  border-color: rgba(137,182,255,0.42);
+  box-shadow: var(--shadow-2);
+}
+
+.hero-card:active{ transform: translateY(0px) scale(0.995); }
+
+/* ---------- Squad Slots ---------- */
+.slot{
+  background: rgba(8, 10, 16, 0.58);
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: var(--radius-sm);
+  height: 86px;
+
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+  overflow: hidden;
+
+  /* Fix text wrapping / overflow inside slots */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  text-align: center;
+  padding: 8px;
+  gap: 2px;
+}
+
+.slot:hover{
+  background: rgba(137,182,255,0.10);
+  border-color: rgba(137,182,255,0.50);
+  transform: translateY(-1px);
+}
+
+/* If you add these classes later, nice selection states */
+.slot.selected{
+  border-color: rgba(255,210,122,0.72);
+  box-shadow: 0 0 0 2px rgba(255,210,122,0.18), var(--shadow-1);
+}
+
+.hero-card.selected{
+  border-color: rgba(255,210,122,0.72);
+  box-shadow: 0 0 0 2px rgba(255,210,122,0.18), var(--shadow-2);
+}
+
+/* Ensure slot text is bright and wraps */
+.slot *{
+  color: var(--text-0) !important;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Slot labels (Front 1, etc.) */
+.slot .slot-label, .slot strong, .slot b{
+  color: var(--text-0) !important;
+}
+
+/* ---------- Fix the bottom "Front/Back summary" panel readability ---------- */
+.page-panel .front, .page-panel .back{
+  color: var(--text-0) !important;
+}
+
+/* ---------- Rarity Colors ---------- */
+.rarity-common{ color: rgba(255,255,255,0.80) !important; }
+.rarity-uncommon{ color: #58f0c6 !important; }
+.rarity-rare{ color: #8fc3ff !important; }
+.rarity-epic{ color: #c6a3ff !important; }
+.rarity-legendary{ color: #ffd27a !important; }
+
+/* Optional pill if you wrap rarity in a span */
+.rarity-pill{
+  display:inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(0,0,0,0.28);
+  font-size: 0.84rem;
+  letter-spacing: 0.04em;
+  color: var(--text-0);
+}
+
+/* ---------- Prevent common horizontal overflow sources ---------- */
+img, svg, canvas, video{ max-width: 100%; height: auto; }
+pre, code{
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Any long strings in cards/panels */
+.hero-card, .page-panel{
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Scrollbar ---------- */
+*::-webkit-scrollbar{ width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb{
+  background: rgba(137,182,255,0.26);
+  border-radius: 999px;
+  border: 2px solid rgba(8,10,16,0.62);
+}
+*::-webkit-scrollbar-thumb:hover{ background: rgba(137,182,255,0.38); }
+*::-webkit-scrollbar-track{ background: rgba(0,0,0,0.12); }
+
+/* ---------- Reduced Motion ---------- */
+@media (prefers-reduced-motion: reduce){
+  *{ transition: none !important; animation: none !important; }
+}
+
+
+.slot.occupied{
+  border-color: rgba(255,210,122,0.35);
+  background: rgba(255,210,122,0.06);
+}
+.slot.occupied .slot-name{
+  color: rgba(255,210,122,0.95) !important;
+  letter-spacing: 0.06em;
+}
